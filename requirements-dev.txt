@@ -1,0 +1,8 @@
+# Everything needed to run the unit tests and the linter locally / in CI.
+-r services/auth/requirements.txt
+-r services/employee/requirements.txt
+-r services/director/requirements.txt
+pytest==8.3.3
+mongomock==4.2.0.post1
+fakeredis==2.26.1
+ruff==0.7.4

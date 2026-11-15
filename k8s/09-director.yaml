@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: director
+  namespace: iep-fund
+spec:
+  # Docker Desktop's Kubernetes assigns "localhost" as the EXTERNAL-IP of
+  # LoadBalancer services, so the API is reachable on the host without
+  # `kubectl port-forward` (which pins to a single pod and drops under load).
+  type: LoadBalancer
+  selector:
+    app: director
+  ports:
+    - port: 5002
+      targetPort: 5002
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: director
+  namespace: iep-fund
+spec:
+  # Single replica: the in-process voting listener (app/listener.py)
+  # should poll the chain from one place only.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: director
+  template:
+    metadata:
+      labels:
+        app: director
+    spec:
+      containers:
+        # Built locally by scripts/k8s-up.*; never pulled from a registry.
+        - name: director
+          image: iep/director:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5002
+          envFrom:
+            - configMapRef:
+                name: iep-db-config
+            - configMapRef:
+                name: iep-blockchain-config
+            - secretRef:
+                name: iep-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 20
+            periodSeconds: 10

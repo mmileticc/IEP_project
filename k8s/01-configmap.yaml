@@ -1,0 +1,47 @@
+# Non-sensitive configuration, injected into containers via envFrom.
+# Passwords and the JWT secret live in 02-secret.yaml.
+#
+# Split by concern; each Deployment references only what it needs:
+#   - iep-db-config:         connection info for Postgres/Mongo/Redis
+#   - iep-director-config:   seed data for the initial director account
+#   - iep-blockchain-config: Ethereum voting toggle + Ganache connection info
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iep-db-config
+  namespace: iep-fund
+data:
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "iep_auth"
+  POSTGRES_USER: "iep"
+
+  MONGO_HOST: "mongo"
+  MONGO_PORT: "27017"
+  MONGO_DB: "iep_fund"
+
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iep-director-config
+  namespace: iep-fund
+data:
+  DIRECTOR_SEED_FORENAME: "Scrooge"
+  DIRECTOR_SEED_SURNAME: "McDuck"
+  DIRECTOR_SEED_EMAIL: "onlymoney@gmail.com"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iep-blockchain-config
+  namespace: iep-fund
+data:
+  # "false" switches /decision to the immediate {uuid, approved} flow, in
+  # which case Ganache is not used.
+  BLOCKCHAIN_ENABLED: "true"
+  BLOCKCHAIN_PROVIDER_URL: "http://ganache:8545"
+  GANACHE_DEPLOYER_ACCOUNT_INDEX: "0"

@@ -1,0 +1,98 @@
+# Lightweight alternative to the Kubernetes setup for local development:
+#   cp .env.example .env && docker compose up --build
+# Runs a single employee replica (Kubernetes runs three).
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-iep_auth}
+      POSTGRES_USER: ${POSTGRES_USER:-iep}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iep}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iep} -d ${POSTGRES_DB:-iep_auth}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  ganache:
+    image: trufflesuite/ganache-cli:v6.12.2
+    command: ["--deterministic", "--accounts", "10", "--defaultBalanceEther", "1000"]
+    ports:
+      - "8545:8545"
+
+  auth:
+    build:
+      context: ./services
+      dockerfile: auth/Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-iep_auth}
+      POSTGRES_USER: ${POSTGRES_USER:-iep}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iep}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-super-secret-key-change-in-production}
+      DIRECTOR_SEED_FORENAME: Scrooge
+      DIRECTOR_SEED_SURNAME: McDuck
+      DIRECTOR_SEED_EMAIL: onlymoney@gmail.com
+      DIRECTOR_SEED_PASSWORD: evenmoremoney
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+
+  employee:
+    build:
+      context: ./services
+      dockerfile: employee/Dockerfile
+    environment:
+      MONGO_HOST: mongo
+      MONGO_PORT: "27017"
+      MONGO_DB: ${MONGO_DB:-iep_fund}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-super-secret-key-change-in-production}
+    depends_on:
+      - mongo
+      - redis
+    ports:
+      - "5001:5001"
+
+  director:
+    build:
+      context: ./services
+      dockerfile: director/Dockerfile
+    environment:
+      MONGO_HOST: mongo
+      MONGO_PORT: "27017"
+      MONGO_DB: ${MONGO_DB:-iep_fund}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-super-secret-key-change-in-production}
+      BLOCKCHAIN_ENABLED: ${BLOCKCHAIN_ENABLED:-true}
+      BLOCKCHAIN_PROVIDER_URL: http://ganache:8545
+      GANACHE_DEPLOYER_ACCOUNT_INDEX: "0"
+    depends_on:
+      - mongo
+      - redis
+      - ganache
+    ports:
+      - "5002:5002"
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:

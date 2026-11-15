@@ -1,0 +1,44 @@
+# Local Ethereum simulator for the /decision voting flow. Deliberately not
+# persisted: the chain resets on restart, which is fine because it only
+# holds transient voting state.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ganache
+  namespace: iep-fund
+spec:
+  # Exposed on the host so voters (and the test client) can sign and send
+  # their vote transactions directly to the chain.
+  type: LoadBalancer
+  selector:
+    app: ganache
+  ports:
+    - port: 8545
+      targetPort: 8545
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ganache
+  namespace: iep-fund
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ganache
+  template:
+    metadata:
+      labels:
+        app: ganache
+    spec:
+      containers:
+        - name: ganache
+          image: trufflesuite/ganache-cli:v6.12.2
+          args: ["--deterministic", "--accounts", "10", "--defaultBalanceEther", "1000"]
+          ports:
+            - containerPort: 8545
+          readinessProbe:
+            tcpSocket:
+              port: 8545
+            initialDelaySeconds: 5
+            periodSeconds: 5

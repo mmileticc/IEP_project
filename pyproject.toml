@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["_private"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["UP038"]  # isinstance(x, (A, B)) is clearer and faster than A | B
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "common"]
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib -q"
